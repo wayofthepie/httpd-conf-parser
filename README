@@ -19,4 +19,4 @@ Following is what the grammar for an apache httpd.conf (and other config files) 
         (see http://httpd.apache.org/docs/2.2/mod/directives.html for a list
             of possible directives and their arguments)
         
-This is a (massive) work in progress.
+This is a work in progress.

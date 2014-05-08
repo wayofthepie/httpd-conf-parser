@@ -29,13 +29,10 @@ import Text.Parsec.String
 import Control.Applicative hiding ((<|>), many)
 
 
-type Config         = [Line] 
-
-data Line           = Line Directive deriving Show
+newtype Config      = Config ( [Directive] )  deriving Show
 
 data Directive      = SectionDirective SectionOpen Config SectionClose 
                     | SimpleDirective DirectiveName [DirectiveArg] deriving Show
-
 
 data SectionOpen    = SectionOpen DirectiveName [DirectiveArg] deriving Show
 
@@ -46,56 +43,82 @@ type DirectiveArg   = String
 type DirectiveName  = String 
 
 
+emptyConfig :: Config
+emptyConfig = Config ( [] )
+
+
 config :: Parser Config
-config = many1 line 
-
-line :: Parser Line
-line = Line <$> (directive <* newline)
-
+config = fmap Config $ many1 directive
+    
+    
 directive :: Parser Directive
-directive = sectionDirective <|> simpleDirective
+directive = try (sectionDirective) <|> simpleDirective <?> "Directive"
+
 
 sectionDirective :: Parser Directive
-sectionDirective = SectionDirective <$> sectionOpen <*> config <*> sectionClose
+sectionDirective = do
+    so      <-  sectionOpen <* newline    
+    next    <-  try $ lookAhead (sectionClose >> return emptyConfig) 
+                    <|> Config <$> many1 directive <* newline                    
+    sc      <-  sectionClose
+    return $ SectionDirective so next sc
 
+    
 simpleDirective :: Parser Directive
-simpleDirective = SimpleDirective <$> directiveName <*> (whitespace *> many (directiveArg))
+simpleDirective = SimpleDirective 
+    <$> directiveName 
+    <*> many directiveArg
+    <?> "SimpleDirective"
 
+    
 sectionOpen :: Parser SectionOpen
 sectionOpen = SectionOpen
     <$> (char '<' *> directiveName) 
-    <*> (many (directiveArg) <* char '>')
+    <*> (many directiveArg) <* char '>'
+    <?> "SectionOpen"
 
+    
 sectionClose :: Parser SectionClose
 sectionClose = SectionClose
-    <$> (char '<' *> char '/' *> directiveName <* char '>')
+    <$> (char '<' *> char '/' *> directiveName <* char '>') 
+    <?> "SectionClose"
     
+    
+{-
+    A Directive name must start with a letter and can contain 
+    any alpha-numeric characters.
+-}
 directiveName :: Parser DirectiveName
-directiveName = (:) <$> letter <*> many alphaNum
-
-directiveArg :: Parser DirectiveArg
-directiveArg =  (:) <$> anyChar <*> many alphaNum
+directiveName = (:) 
+    <$> letter 
+    <*> many alphaNum 
+    <?> "DirectiveName"
 
 
 {-
-    Low Level.
+    A DirectiveArg is generic for now - it can contain any characters
+    besides "<>" and " ". This will most likely be generalized per
+    Directive.
+-}
+directiveArg :: Parser DirectiveArg
+directiveArg = do
+    whitespace
+    arg <- many1 (try $ noneOf "< >") <?> "DirectiveArg"
+    return arg
+
+{-
+    Parse an integer.
 -}
 num :: Parser Int
 num = read <$> many digit
 
-whitespace = space >> spaces
-
+{-
+    Parse a string literal.
+-}
 lit :: String -> Parser String
 lit xs = string xs <* whitespace
 
-
 {-
-    Result of applying parser 'p' to 'input'.
+    Parse whitespace.
 -}
-run :: Show a => Parser a -> String -> IO()
-run p input = 
-    case (parse p "" input) of
-         Left err -> do {
-             putStr "Parse error at "; print err
-         }
-         Right x -> print x
+whitespace = space >> spaces
