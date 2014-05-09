@@ -1,23 +1,29 @@
+import Data.Char
+
 import HttpdConfigParser
+
 import Text.Parsec
 import Text.Parsec.String
 import Test.HUnit
+import Test.QuickCheck
 
 -------------------------------------------------------------------------------
 -- Tests
 -------------------------------------------------------------------------------
+{-
+a = parse (many configp) "" "<s>\n\n\no ddd dsads\n\n</s>\ntest test"
 
 testDirectiveName = 
-    TestCase (assertEqual' "directiveName parser: positive" directiveName "test" "test")
+    TestCase (assertEqual "directiveName parser: positive" directiveNamep "test" "test")
+    TestCase (assertEqual "directiveName parser: positive" ( run directiveNamep "test" "test2")
 
 testDirectiveArg = 
-    TestCase (assertEqual' "directiveArg parser: positive" directiveArg " test" "test")
-        
+    TestCase (assertEqual' "directiveArg parser: positive" directiveArgp " test" "test")
 
 
 tests = TestList [  TestLabel "testDirectiveArg" testDirectiveArg,
                     TestLabel "testDirectiveName" testDirectiveName ]
-                    
+-}                  
                     
 -------------------------------------------------------------------------------
 -- Helper Functions

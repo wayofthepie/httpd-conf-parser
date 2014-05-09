@@ -31,56 +31,66 @@ import Control.Applicative hiding ((<|>), many)
 
 newtype Config      = Config ( [Directive] )  deriving Show
 
-data Directive      = SectionDirective SectionOpen Config SectionClose 
-                    | SimpleDirective DirectiveName [DirectiveArg] deriving Show
+emptyConfig :: Config
+emptyConfig = Config ( [] )
+
+
+data Directive      = SectionDirective SectionOpen Directive SectionClose 
+                    | SimpleDirective DirectiveName [DirectiveArg] 
+                    | EmptyDirective deriving Show
+
+emptyDirective :: Directive
+emptyDirective = EmptyDirective
+
 
 data SectionOpen    = SectionOpen DirectiveName [DirectiveArg] deriving Show
 
 data SectionClose   = SectionClose DirectiveName  deriving Show
     
-type DirectiveArg   = String 
+data DirectiveArg   = DirectiveArg String deriving Show
     
-type DirectiveName  = String 
+data DirectiveName  = DirectiveName String deriving Show
 
 
-emptyConfig :: Config
-emptyConfig = Config ( [] )
-
-
-config :: Parser Config
-config = fmap Config $ many1 directive
+configp :: Parser Config
+configp = fmap Config $ many1 directivep
     
     
-directive :: Parser Directive
-directive = try (sectionDirective) <|> simpleDirective <?> "Directive"
+directivep :: Parser Directive
+directivep = do
+    skipMany newline
+    d <- try ( sectionDirectivep ) <|> simpleDirectivep <?> "Directive"    
+    return d
 
-
-sectionDirective :: Parser Directive
-sectionDirective = do
-    so      <-  sectionOpen <* newline    
-    next    <-  try $ lookAhead (sectionClose >> return emptyConfig) 
-                    <|> Config <$> many1 directive <* newline                    
-    sc      <-  sectionClose
+    
+sectionDirectivep :: Parser Directive
+sectionDirectivep = do
+    so      <-  sectionOpenp <* skipMany newline    
+    next    <-  try ( lookAhead ( sectionClosep >> return emptyDirective ) )
+                    <|> directivep <* skipMany newline
+    sc      <-  sectionClosep
     return $ SectionDirective so next sc
 
     
-simpleDirective :: Parser Directive
-simpleDirective = SimpleDirective 
-    <$> directiveName 
-    <*> many directiveArg
+simpleDirectivep :: Parser Directive
+simpleDirectivep = SimpleDirective 
+    <$> directiveNamep 
+    <*> many directiveArgp 
     <?> "SimpleDirective"
+-- 
+    
+sectionOpenp :: Parser SectionOpen
+sectionOpenp = do
+    char '<'
+    SimpleDirective d dargs <- simpleDirectivep
+    char '>'
+    return $ SectionOpen d dargs
+ 
 
     
-sectionOpen :: Parser SectionOpen
-sectionOpen = SectionOpen
-    <$> (char '<' *> directiveName) 
-    <*> (many directiveArg) <* char '>'
-    <?> "SectionOpen"
-
-    
-sectionClose :: Parser SectionClose
-sectionClose = SectionClose
-    <$> (char '<' *> char '/' *> directiveName <* char '>') 
+sectionClosep :: Parser SectionClose
+sectionClosep = SectionClose
+    <$> (char '<' *> char '/' *> directiveNamep <* char '>') 
     <?> "SectionClose"
     
     
@@ -88,11 +98,12 @@ sectionClose = SectionClose
     A Directive name must start with a letter and can contain 
     any alpha-numeric characters.
 -}
-directiveName :: Parser DirectiveName
-directiveName = (:) 
-    <$> letter 
-    <*> many alphaNum 
-    <?> "DirectiveName"
+directiveNamep :: Parser DirectiveName
+directiveNamep = do
+    skipMany whitespace
+    name <- (:) <$> letter <*> many alphaNum
+    skipMany whitespace
+    return $ DirectiveName ( name )
 
 
 {-
@@ -100,17 +111,20 @@ directiveName = (:)
     besides "<>" and " ". This will most likely be generalized per
     Directive.
 -}
-directiveArg :: Parser DirectiveArg
-directiveArg = do
-    whitespace
-    arg <- many1 (try $ noneOf "< >") <?> "DirectiveArg"
-    return arg
+directiveArgp :: Parser DirectiveArg
+directiveArgp = do
+    skipMany whitespace
+    arg <- many1 alphaNum <?> "DirectiveArg"
+    skipMany whitespace
+    return $ DirectiveArg arg
 
+    
 {-
     Parse an integer.
 -}
 num :: Parser Int
 num = read <$> many digit
+
 
 {-
     Parse a string literal.
@@ -118,7 +132,10 @@ num = read <$> many digit
 lit :: String -> Parser String
 lit xs = string xs <* whitespace
 
+
 {-
     Parse whitespace.
 -}
 whitespace = space >> spaces
+
+         
