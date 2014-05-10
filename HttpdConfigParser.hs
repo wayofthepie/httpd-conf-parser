@@ -51,6 +51,13 @@ data DirectiveArg   = DirectiveArg String deriving Show
     
 data DirectiveName  = DirectiveName String deriving Show
 
+commentp :: Parser ()
+commentp = do     
+    skipMany newline
+    skipMany whitespace
+    char '#' *> skipMany (noneOf "\n\r")
+    return ()
+    
 
 configp :: Parser Config
 configp = fmap Config $ many1 directivep
@@ -59,13 +66,15 @@ configp = fmap Config $ many1 directivep
 directivep :: Parser Directive
 directivep = do
     skipMany newline
+    skipMany commentp 
     d <- try ( sectionDirectivep ) <|> simpleDirectivep <?> "Directive"    
+    skipMany commentp 
     return d
 
     
 sectionDirectivep :: Parser Directive
 sectionDirectivep = do
-    so      <-  sectionOpenp <* skipMany newline    
+    so      <-  sectionOpenp   
     next    <-  try ( lookAhead ( sectionClosep >> return emptyDirective ) )
                     <|> directivep <* skipMany newline
     sc      <-  sectionClosep
@@ -84,13 +93,14 @@ sectionOpenp = do
     char '<'
     SimpleDirective d dargs <- simpleDirectivep
     char '>'
+    skipMany newline
     return $ SectionOpen d dargs
  
 
     
 sectionClosep :: Parser SectionClose
 sectionClosep = SectionClose
-    <$> (char '<' *> char '/' *> directiveNamep <* char '>') 
+    <$> (char '<' *> char '/' *> directiveNamep <* char '>')  <* skipMany newline
     <?> "SectionClose"
     
     
