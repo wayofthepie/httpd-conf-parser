@@ -35,13 +35,16 @@ emptyConfig :: Config
 emptyConfig = Config ( [] )
 
 
-data Directive      = SectionDirective SectionOpen Directive SectionClose 
-                    | SimpleDirective DirectiveName [DirectiveArg] 
+data Directive      = Section SectionDirective 
+                    | Simple SimpleDirective 
                     | EmptyDirective deriving Show
 
 emptyDirective :: Directive
 emptyDirective = EmptyDirective
 
+data SectionDirective   = SectionDirective SectionOpen Directive SectionClose deriving Show
+
+data SimpleDirective    = SimpleDirective DirectiveName [DirectiveArg] deriving Show
 
 data SectionOpen    = SectionOpen DirectiveName [DirectiveArg] deriving Show
 
@@ -52,8 +55,7 @@ data DirectiveArg   = DirectiveArg String deriving Show
 data DirectiveName  = DirectiveName String deriving Show
 
 commentp :: Parser ()
-commentp = do     
-    skipMany newline
+commentp = do        
     skipMany whitespace
     char '#' *> skipMany (noneOf "\n\r")
     return ()
@@ -69,6 +71,7 @@ directivep = do
     skipMany commentp 
     d <- try ( sectionDirectivep ) <|> simpleDirectivep <?> "Directive"    
     skipMany commentp 
+    skipMany newline
     return d
 
     
@@ -76,22 +79,22 @@ sectionDirectivep :: Parser Directive
 sectionDirectivep = do
     so      <-  sectionOpenp   
     next    <-  try ( lookAhead ( sectionClosep >> return emptyDirective ) )
-                    <|> directivep <* skipMany newline
+                    <|> directivep 
     sc      <-  sectionClosep
-    return $ SectionDirective so next sc
+    return $ Section $ SectionDirective so next sc
 
     
 simpleDirectivep :: Parser Directive
-simpleDirectivep = SimpleDirective 
-    <$> directiveNamep 
-    <*> many directiveArgp 
-    <?> "SimpleDirective"
+simpleDirectivep = do     
+    dname <- directiveNamep 
+    dargs <- many directiveArgp 
+    return $ Simple $ SimpleDirective dname dargs
 -- 
     
 sectionOpenp :: Parser SectionOpen
 sectionOpenp = do
     char '<'
-    SimpleDirective d dargs <- simpleDirectivep
+    Simple ( SimpleDirective d dargs )<- simpleDirectivep
     char '>'
     skipMany newline
     return $ SectionOpen d dargs
