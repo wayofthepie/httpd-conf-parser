@@ -22,6 +22,7 @@
             
     This is a (massive) work in progress.
 -}
+
 module HttpdConfigParser where
 
 import Text.Parsec hiding (Line)
@@ -29,38 +30,98 @@ import Text.Parsec.String
 import Control.Applicative hiding ((<|>), many)
 
 
-newtype Config      = Config ( [Directive] )  deriving Show
+-------------------------------------------------------------------------------
+-- Classes
+-------------------------------------------------------------------------------
+class Directive a where 
+    directiveName       :: a -> String
+    directiveArgs       :: a -> [String]
+    hasNestedConfig     :: a -> Bool
+    nestedConfig        :: a -> Config
+
+    
+    
+-------------------------------------------------------------------------------
+-- Config
+-------------------------------------------------------------------------------
+newtype Config      = Config ( [Line] )  deriving (Eq, Show)
 
 emptyConfig :: Config
 emptyConfig = Config ( [] )
 
 
-data Directive      = Section SectionDirective 
-                    | Simple SimpleDirective 
-                    | EmptyDirective deriving Show
 
-emptyDirective :: Directive
-emptyDirective = EmptyDirective
+-------------------------------------------------------------------------------
+-- Line
+-------------------------------------------------------------------------------
+data Line           = Section SectionDirective 
+                    | Simple SimpleDirective deriving (Eq, Show)
 
-data SectionDirective   = SectionDirective SectionOpen Config SectionClose deriving Show
 
-data SimpleDirective    = SimpleDirective DirectiveName [DirectiveArg] deriving Show
+                    
+-------------------------------------------------------------------------------
+-- SectionDirective
+-------------------------------------------------------------------------------
+data SectionDirective   
+        = SectionDirective SectionOpen Config SectionClose deriving (Eq, Show)
 
-data SectionOpen    = SectionOpen DirectiveName [DirectiveArg] deriving Show
-
-data SectionClose   = SectionClose DirectiveName  deriving Show
+instance Directive SectionDirective where
     
-data DirectiveArg   = DirectiveArg String deriving Show
+    directiveName 
+        (SectionDirective (SectionOpen (SimpleDirective x _)) _ _)  = x
     
-data DirectiveName  = DirectiveName String deriving Show
+    directiveArgs 
+        (SectionDirective (SectionOpen (SimpleDirective _ x)) _ _)  = x
+    
+    hasNestedConfig _                                               = True
+    
+    nestedConfig (SectionDirective _ x _ )                          = x
+
+    
+-------------------------------------------------------------------------------
+-- SimpleDirective
+-------------------------------------------------------------------------------
+data SimpleDirective    = SimpleDirective String [String] deriving (Eq, Show)
+
+instance Directive SimpleDirective where
+    directiveName ( SimpleDirective ( x ) _)    = x
+    directiveArgs ( SimpleDirective _ ( x ) )   = x
+    hasNestedConfig _                           = False
+    nestedConfig _                              = emptyConfig
+
+    
+
+-------------------------------------------------------------------------------
+-- SectionOpen
+-------------------------------------------------------------------------------
+data SectionOpen    = SectionOpen SimpleDirective deriving (Eq, Show)
 
 
 
+-------------------------------------------------------------------------------
+-- SectionClose
+-------------------------------------------------------------------------------
+data SectionClose   = SectionClose String deriving (Eq, Show)
+
+
+
+-------------------------------------------------------------------------------
+-- Parsers
+-------------------------------------------------------------------------------
+
+{-
+    configp : parse configuration
+    
+    This is the top-level function for the overall config parser. 
+-}
 configp :: Parser Config
 configp = fmap Config $ many1 directivep
     
     
-directivep :: Parser Directive
+{-
+    directivep : parse a directive
+-}
+directivep :: Parser Line
 directivep = do
     skipMany whitespace
     skipMany commentp 
@@ -70,7 +131,7 @@ directivep = do
     return d
 
     
-sectionDirectivep :: Parser Directive
+sectionDirectivep :: Parser Line
 sectionDirectivep = do
     so      <-  sectionOpenp   
     next    <-  try ( lookAhead ( sectionClosep >> return emptyConfig ) )
@@ -87,7 +148,7 @@ sectionDirectivep = do
     by one or more spaces and the arguments, if more than one, must 
     also be seperated from each other by one or more spaces
 -}
-simpleDirectivep :: Parser Directive
+simpleDirectivep :: Parser Line
 simpleDirectivep = do     
     dname <- directiveNamep  
     many $ oneOf " " 
@@ -98,10 +159,10 @@ simpleDirectivep = do
 sectionOpenp :: Parser SectionOpen
 sectionOpenp = do
     char '<'
-    Simple ( SimpleDirective d dargs ) <- simpleDirectivep
+    Simple x <- simpleDirectivep
     char '>'
     skipMany newline
-    return $ SectionOpen d dargs
+    return $ SectionOpen x
  
 
     
@@ -115,10 +176,10 @@ sectionClosep = SectionClose
     A Directive name must start with a letter and can contain 
     any alpha-numeric characters.
 -}
-directiveNamep :: Parser DirectiveName
+directiveNamep :: Parser String
 directiveNamep = do    
     name <- (:) <$> letter <*> many alphaNum    
-    return $ DirectiveName name
+    return $ name
 
 
 {-
@@ -126,10 +187,10 @@ directiveNamep = do
     besides "<>" and " ". This will most likely be generalized per
     Directive.
 -}
-directiveArgp :: Parser DirectiveArg
+directiveArgp :: Parser String
 directiveArgp = do    
     arg <- many1 dArgAllowed <?> "DirectiveArg"    
-    return $ DirectiveArg arg
+    return $ arg
 
 
 dArgAllowed :: Parser Char
@@ -158,8 +219,9 @@ lit xs = string xs <* whitespace
 
 
 {-
-    Parse whitespace.
+    Parse whitespace - includes newlines.
 -}
+whitespace :: Parser ()
 whitespace = space >> spaces
 
 
