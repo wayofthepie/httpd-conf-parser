@@ -42,7 +42,7 @@ data Directive      = Section SectionDirective
 emptyDirective :: Directive
 emptyDirective = EmptyDirective
 
-data SectionDirective   = SectionDirective SectionOpen Directive SectionClose deriving Show
+data SectionDirective   = SectionDirective SectionOpen Config SectionClose deriving Show
 
 data SimpleDirective    = SimpleDirective DirectiveName [DirectiveArg] deriving Show
 
@@ -54,12 +54,7 @@ data DirectiveArg   = DirectiveArg String deriving Show
     
 data DirectiveName  = DirectiveName String deriving Show
 
-commentp :: Parser ()
-commentp = do        
-    skipMany whitespace
-    char '#' *> skipMany (noneOf "\n\r")
-    return ()
-    
+
 
 configp :: Parser Config
 configp = fmap Config $ many1 directivep
@@ -67,34 +62,43 @@ configp = fmap Config $ many1 directivep
     
 directivep :: Parser Directive
 directivep = do
-    skipMany newline
+    skipMany whitespace
     skipMany commentp 
-    d <- try ( sectionDirectivep ) <|> simpleDirectivep <?> "Directive"    
+    d <- try ( sectionDirectivep ) <|> simpleDirectivep  <?> "Directive"    
     skipMany commentp 
-    skipMany newline
+    skipMany whitespace
     return d
 
     
 sectionDirectivep :: Parser Directive
 sectionDirectivep = do
     so      <-  sectionOpenp   
-    next    <-  try ( lookAhead ( sectionClosep >> return emptyDirective ) )
-                    <|> directivep 
+    next    <-  try ( lookAhead ( sectionClosep >> return emptyConfig ) )
+                    <|> configp
     sc      <-  sectionClosep
     return $ Section $ SectionDirective so next sc
 
     
+{-
+    simpleDirectivep : parse a simple directive
+    
+    A SimpleDirective must have a DirectiveName and can have 0 or more 
+    arguments. The DirectiveName must be seperated from its arguments
+    by one or more spaces and the arguments, if more than one, must 
+    also be seperated from each other by one or more spaces
+-}
 simpleDirectivep :: Parser Directive
 simpleDirectivep = do     
-    dname <- directiveNamep 
-    dargs <- many directiveArgp 
+    dname <- directiveNamep  
+    many $ oneOf " " 
+    dargs <- endBy directiveArgp $ many $ oneOf " "
     return $ Simple $ SimpleDirective dname dargs
--- 
+ 
     
 sectionOpenp :: Parser SectionOpen
 sectionOpenp = do
     char '<'
-    Simple ( SimpleDirective d dargs )<- simpleDirectivep
+    Simple ( SimpleDirective d dargs ) <- simpleDirectivep
     char '>'
     skipMany newline
     return $ SectionOpen d dargs
@@ -103,7 +107,7 @@ sectionOpenp = do
     
 sectionClosep :: Parser SectionClose
 sectionClosep = SectionClose
-    <$> (char '<' *> char '/' *> directiveNamep <* char '>')  <* skipMany newline
+    <$> (char '<' *> char '/' *> directiveNamep <* char '>')  <* skipMany whitespace
     <?> "SectionClose"
     
     
@@ -112,11 +116,9 @@ sectionClosep = SectionClose
     any alpha-numeric characters.
 -}
 directiveNamep :: Parser DirectiveName
-directiveNamep = do
-    skipMany whitespace
-    name <- (:) <$> letter <*> many alphaNum
-    skipMany whitespace
-    return $ DirectiveName ( name )
+directiveNamep = do    
+    name <- (:) <$> letter <*> many alphaNum    
+    return $ DirectiveName name
 
 
 {-
@@ -125,12 +127,21 @@ directiveNamep = do
     Directive.
 -}
 directiveArgp :: Parser DirectiveArg
-directiveArgp = do
-    skipMany whitespace
-    arg <- many1 alphaNum <?> "DirectiveArg"
-    skipMany whitespace
+directiveArgp = do    
+    arg <- many1 dArgAllowed <?> "DirectiveArg"    
     return $ DirectiveArg arg
 
+
+dArgAllowed :: Parser Char
+dArgAllowed = try ( alphaNum ) <|> oneOf "/~.-_,\"\\^" 
+    
+
+commentp :: Parser ()
+commentp = do            
+    char '#' *> try (skipMany (noneOf "\n\r"))
+    skipMany whitespace
+    return ()
+    
     
 {-
     Parse an integer.
@@ -151,4 +162,6 @@ lit xs = string xs <* whitespace
 -}
 whitespace = space >> spaces
 
+
+   
          
