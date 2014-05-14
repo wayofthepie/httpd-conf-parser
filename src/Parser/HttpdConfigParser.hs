@@ -23,7 +23,7 @@
     This is a (massive) work in progress.
 -}
 
-module HttpdConfigParser where
+module Parser.HttpdConfigParser where
 
 import Text.Parsec hiding (Line)
 import Text.Parsec.String
@@ -65,6 +65,15 @@ data Line           = Section SectionDirective
 data SectionDirective   
         = SectionDirective SectionOpen Config SectionClose deriving (Eq, Show)
 
+{-
+    hasCorrectTags : whether given section directive's open/close tags match.
+-}
+hasCorrectTags :: SectionDirective -> Bool
+hasCorrectTags (SectionDirective (SectionOpen sd) _ (SectionClose sc)) 
+        | directiveName sd ==  sc  = True
+        | otherwise                             = False
+
+
 instance Directive SectionDirective where
     
     directiveName 
@@ -77,7 +86,7 @@ instance Directive SectionDirective where
     
     nestedConfig (SectionDirective _ x _ )                          = x
 
-    
+   
 -------------------------------------------------------------------------------
 -- SimpleDirective
 -------------------------------------------------------------------------------
@@ -95,7 +104,6 @@ instance Directive SimpleDirective where
 -- SectionOpen
 -------------------------------------------------------------------------------
 data SectionOpen    = SectionOpen SimpleDirective deriving (Eq, Show)
-
 
 
 -------------------------------------------------------------------------------
