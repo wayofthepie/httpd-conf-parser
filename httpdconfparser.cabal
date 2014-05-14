@@ -1,0 +1,13 @@
+Name:                httpd-conf-analyzer
+Version:             0.1
+Synopsis:            Apache httpd configuration analyzer
+Description:         Parses and analyzer httpd configuration files.
+build-type: Simple
+Author:              Stephen O'Brien
+Maintainer:          Stephen O'Brien 
+Build-Depends:       base,parsec,test-framework,test-framework-hunit,
+                     test-framework-quickcheck2
+                     
+
+Executable:          hca
+Main-is:             HttpdConfigParser.hs
