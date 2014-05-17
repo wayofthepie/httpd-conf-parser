@@ -71,7 +71,7 @@ data SectionDirective
 hasCorrectTags :: SectionDirective -> Bool
 hasCorrectTags (SectionDirective (SectionOpen sd) _ (SectionClose sc)) 
         | directiveName sd ==  sc  = True
-        | otherwise                             = False
+        | otherwise                = False
 
 
 instance Directive SectionDirective where

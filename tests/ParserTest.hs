@@ -13,6 +13,7 @@ import Test.QuickCheck.Test hiding (test)
 import Test.Framework.Providers.QuickCheck2
 import Test.Framework
 import Test.Framework.Providers.API
+import Data.Monoid (mempty)
 -------------------------------------------------------------------------------
 -- Unit Tests
 -------------------------------------------------------------------------------
@@ -41,24 +42,49 @@ dArgAllowedTests = test [
 -------------------------------------------------------------------------------
 -- QuickCheck Tests
 -------------------------------------------------------------------------------
-newtype AllowedString = AllowedString { unwrapChar :: String } deriving Show
+emptyTestOpts = mempty :: TestOptions
+
+testOpts = emptyTestOpts { topt_maximum_generated_tests = Just 10000 }
+
+emptyRunnerOpts = mempty :: RunnerOptions
+runnerOpts = emptyRunnerOpts { ropt_test_options = Just testOpts }
+
+
+newtype AllowedChar     = AllowedChar   { unwrapChar :: Char } deriving Show
+newtype AllowedString   = AllowedString { unwrapString :: String } deriving Show
+
 
 genAllowedChar :: Gen Char
 genAllowedChar = elements $ ['a'..'z'] ++ ['A'..'Z'] ++ "/~.-_,\"\\^"
 
 genAllowedString :: Gen String
-genAllowedString = listOf genAllowedChar
+genAllowedString = listOf1 genAllowedChar
 
 
+instance Arbitrary AllowedChar where
+    arbitrary = AllowedChar <$> genAllowedChar
+    
 instance Arbitrary AllowedString where
     arbitrary = AllowedString <$> genAllowedString
 
     
-propCharsAllowed :: AllowedString -> Bool
-propCharsAllowed (AllowedString x) = run (many dArgAllowed) x == Just x
+{-
+    Properties to test.
+-}
+propCharsAllowed :: AllowedChar -> Bool
+propCharsAllowed (AllowedChar x) = run dArgAllowed [x] == Just x
 
-dArgAllowedQTest :: [Test]
-dArgAllowedQTest =  [ testGroup "a" [ testProperty ""  propCharsAllowed ] ]
+propStringsAllowed :: AllowedString -> Bool
+propStringsAllowed (AllowedString x) = run directiveArgp x == Just x
+
+{-
+    Validate allowed characters for a Directive Argument.
+-}
+simpleDirectiveQTest :: [Test]
+simpleDirectiveQTest =  [ 
+    testGroup "Directive Allowed Arguments" [ 
+        testProperty "chars allowed"  propCharsAllowed, 
+        testProperty "strings allowed" propStringsAllowed ] ]
 
 -------------------------------------------------------------------------------
 -- Helper Functions
