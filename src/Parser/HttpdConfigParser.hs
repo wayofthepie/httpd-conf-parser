@@ -130,20 +130,19 @@ configp = fmap Config $ many1 directivep
     directivep : parse a directive
 -}
 directivep :: Parser Line
-directivep = do
-    skipMany whitespace
-    skipMany commentp 
-    d <- try ( sectionDirectivep ) <|> simpleDirectivep  <?> "Directive"    
-    skipMany commentp 
-    skipMany whitespace
-    return d
+directivep = skipMany whitespace 
+    *> skipMany commentp 
+    *> (try ( sectionDirectivep ) <|> simpleDirectivep <?> "Directive") 
+    <* skipMany commentp 
+    <* skipMany whitespace
+    
 
     
 sectionDirectivep :: Parser Line
-sectionDirectivep = do
+sectionDirectivep = 
     so      <-  sectionOpenp   
     next    <-  try ( lookAhead ( sectionClosep >> return emptyConfig ) )
-                    <|> configp
+                    <|> configp <?> "SectionClose or Config"
     sc      <-  sectionClosep
     return $ Section $ SectionDirective so next sc
 

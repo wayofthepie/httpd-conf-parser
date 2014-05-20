@@ -77,9 +77,7 @@ propCharsAllowed (AllowedChar x) = run dArgAllowed [x] == Just x
 propStringsAllowed :: AllowedString -> Bool
 propStringsAllowed (AllowedString x) = run directiveArgp x == Just x
 
-{-
-    Validate allowed characters for a Directive Argument.
--}
+
 simpleDirectiveQTest :: [Test]
 simpleDirectiveQTest =  [ 
     testGroup "Directive Allowed Arguments" [ 
