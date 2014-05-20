@@ -166,7 +166,7 @@ simpleDirectivep = do
     
 sectionOpenp :: Parser SectionOpen
 sectionOpenp = SectionOpen 
-    <$> (char '<' *> simpleDirectivep <*  char '>' <*  skipMany newline)    
+    <$> (char '<' *> simpleDirectivep <*  char '>' <*  skipMany newline) <?> "SectionOpen"   
  
 
     
