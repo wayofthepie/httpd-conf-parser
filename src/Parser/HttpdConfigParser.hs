@@ -132,8 +132,8 @@ configp = fmap Config $ many1 directivep
 directivep :: Parser Line
 directivep = skipMany whitespace 
     *> skipMany commentp 
-    *> (try ( Section <$> sectionDirectivep )
-        <|> ( Simple <$> simpleDirectivep ) <?> "Directive") 
+    *> ( try ( Section <$> sectionDirectivep )
+        <|> ( Simple <$> simpleDirectivep ) <?> "Directive" ) 
     <* skipMany commentp 
     <* skipMany whitespace
     
@@ -165,12 +165,8 @@ simpleDirectivep = do
  
     
 sectionOpenp :: Parser SectionOpen
-sectionOpenp = do
-    char '<'
-    x <- simpleDirectivep
-    char '>'
-    skipMany newline
-    return $ SectionOpen x
+sectionOpenp = SectionOpen 
+    <$> (char '<' *> simpleDirectivep <*  char '>' <*  skipMany newline)    
  
 
     
