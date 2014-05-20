@@ -44,7 +44,7 @@ class Directive a where
 -------------------------------------------------------------------------------
 -- Config
 -------------------------------------------------------------------------------
-newtype Config      = Config ( [Line] )  deriving (Eq, Show)
+newtype Config      = Config ( [DirectiveT] )  deriving (Eq, Show)
 
 emptyConfig :: Config
 emptyConfig = Config ( [] )
@@ -54,7 +54,7 @@ emptyConfig = Config ( [] )
 -------------------------------------------------------------------------------
 -- Line
 -------------------------------------------------------------------------------
-data Line           = Section SectionDirective 
+data DirectiveT  = Section SectionDirective 
                     | Simple SimpleDirective deriving (Eq, Show)
 
 
@@ -129,7 +129,7 @@ configp = fmap Config $ many1 directivep
 {-
     directivep : parse a directive
 -}
-directivep :: Parser Line
+directivep :: Parser DirectiveT
 directivep = skipMany whitespace 
     *> skipMany commentp 
     *> ( try ( Section <$> sectionDirectivep )
@@ -137,7 +137,6 @@ directivep = skipMany whitespace
     <* skipMany commentp 
     <* skipMany whitespace
     
-
     
 sectionDirectivep :: Parser SectionDirective
 sectionDirectivep = SectionDirective
@@ -146,7 +145,6 @@ sectionDirectivep = SectionDirective
                     <|> configp <?> "SectionClose or Config")
     <*> sectionClosep
     
-
     
 {-
     simpleDirectivep : parse a simple directive
