@@ -166,13 +166,14 @@ simpleDirectivep = do
     
 sectionOpenp :: Parser SectionOpen
 sectionOpenp = SectionOpen 
-    <$> (char '<' *> simpleDirectivep <*  char '>' <*  skipMany newline) <?> "SectionOpen"   
- 
+    <$> (char '<' *> simpleDirectivep <*  char '>' <*  skipMany newline) 
+    <?> "SectionOpen"    
 
     
 sectionClosep :: Parser SectionClose
 sectionClosep = SectionClose
-    <$> (char '<' *> char '/' *> directiveNamep <* char '>')  <* skipMany whitespace
+    <$> (char '<' *> char '/' *> directiveNamep <* char '>')  
+    <* skipMany whitespace 
     <?> "SectionClose"
     
     
@@ -181,20 +182,17 @@ sectionClosep = SectionClose
     any alpha-numeric characters.
 -}
 directiveNamep :: Parser String
-directiveNamep = do    
-    name <- (:) <$> letter <*> many alphaNum    
-    return $ name
-
-
+directiveNamep = (:) <$> letter <*> many alphaNum    
+    
+    
 {-
     A DirectiveArg is generic for now - it can contain any characters
     besides "<>" and " ". This will most likely be generalized per
     Directive.
 -}
 directiveArgp :: Parser String
-directiveArgp = do    
-    arg <- many1 dArgAllowed <?> "DirectiveArg"    
-    return $ arg
+directiveArgp = many1 dArgAllowed <?> "DirectiveArg"    
+    
 
 
 dArgAllowed :: Parser Char
@@ -202,11 +200,8 @@ dArgAllowed = try ( alphaNum ) <|> oneOf "/~.-_,\"\\^"
     
 
 commentp :: Parser ()
-commentp = do            
-    char '#' *> try (skipMany (noneOf "\n\r"))
-    skipMany whitespace
-    return ()
-    
+commentp = char '#' *> try (skipMany (noneOf "\n\r")) *> skipMany whitespace
+       
     
 {-
     Parse an integer.
