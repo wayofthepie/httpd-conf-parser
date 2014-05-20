@@ -132,19 +132,20 @@ configp = fmap Config $ many1 directivep
 directivep :: Parser Line
 directivep = skipMany whitespace 
     *> skipMany commentp 
-    *> (try ( sectionDirectivep ) <|> simpleDirectivep <?> "Directive") 
+    *> (try ( Section <$> sectionDirectivep )
+        <|> ( Simple <$> simpleDirectivep ) <?> "Directive") 
     <* skipMany commentp 
     <* skipMany whitespace
     
 
     
-sectionDirectivep :: Parser Line
-sectionDirectivep = 
+sectionDirectivep :: Parser SectionDirective
+sectionDirectivep = do
     so      <-  sectionOpenp   
     next    <-  try ( lookAhead ( sectionClosep >> return emptyConfig ) )
                     <|> configp <?> "SectionClose or Config"
     sc      <-  sectionClosep
-    return $ Section $ SectionDirective so next sc
+    return $ SectionDirective so next sc
 
     
 {-
@@ -155,18 +156,18 @@ sectionDirectivep =
     by one or more spaces and the arguments, if more than one, must 
     also be seperated from each other by one or more spaces
 -}
-simpleDirectivep :: Parser Line
+simpleDirectivep :: Parser SimpleDirective
 simpleDirectivep = do     
     dname <- directiveNamep  
     many $ oneOf " " 
     dargs <- endBy directiveArgp $ many $ oneOf " "
-    return $ Simple $ SimpleDirective dname dargs
+    return $ SimpleDirective dname dargs
  
     
 sectionOpenp :: Parser SectionOpen
 sectionOpenp = do
     char '<'
-    Simple x <- simpleDirectivep
+    x <- simpleDirectivep
     char '>'
     skipMany newline
     return $ SectionOpen x
