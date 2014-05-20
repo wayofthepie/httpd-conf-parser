@@ -140,12 +140,12 @@ directivep = skipMany whitespace
 
     
 sectionDirectivep :: Parser SectionDirective
-sectionDirectivep = do
-    so      <-  sectionOpenp   
-    next    <-  try ( lookAhead ( sectionClosep >> return emptyConfig ) )
-                    <|> configp <?> "SectionClose or Config"
-    sc      <-  sectionClosep
-    return $ SectionDirective so next sc
+sectionDirectivep = SectionDirective
+    <$> sectionOpenp   
+    <*> (try ( lookAhead ( sectionClosep >> return emptyConfig ) )
+                    <|> configp <?> "SectionClose or Config")
+    <*> sectionClosep
+    
 
     
 {-
@@ -157,22 +157,22 @@ sectionDirectivep = do
     also be seperated from each other by one or more spaces
 -}
 simpleDirectivep :: Parser SimpleDirective
-simpleDirectivep = do     
-    dname <- directiveNamep  
-    many $ oneOf " " 
-    dargs <- endBy directiveArgp $ many $ oneOf " "
-    return $ SimpleDirective dname dargs
+simpleDirectivep = SimpleDirective 
+    <$> directiveNamep 
+    <*  (many $ oneOf " ") 
+    <*> (endBy directiveArgp $ many $ oneOf " ")
+   
  
     
 sectionOpenp :: Parser SectionOpen
 sectionOpenp = SectionOpen 
-    <$> (char '<' *> simpleDirectivep <*  char '>' <*  skipMany newline) 
+    <$> ( char '<' *> simpleDirectivep <* char '>' <*  skipMany newline ) 
     <?> "SectionOpen"    
 
     
 sectionClosep :: Parser SectionClose
 sectionClosep = SectionClose
-    <$> (char '<' *> char '/' *> directiveNamep <* char '>')  
+    <$> ( char '<' *> char '/' *> directiveNamep <* char '>' )  
     <* skipMany whitespace 
     <?> "SectionClose"
     
