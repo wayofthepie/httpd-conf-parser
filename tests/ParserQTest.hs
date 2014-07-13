@@ -1,3 +1,5 @@
+module ParserQTest (parserTests) where
+
 import Data.Char
 
 import Parser.HttpdConfigParser
@@ -13,43 +15,11 @@ import Test.QuickCheck.Test hiding (test)
 import Test.Framework.Providers.QuickCheck2
 import Test.Framework
 import Test.Framework.Providers.API
-import Data.Monoid (mempty)
--------------------------------------------------------------------------------
--- Unit Tests
--------------------------------------------------------------------------------
 
 
-{-
-testDirectiveArg = 
-    TestCase (assertEqual' "directiveArg parser: positive" directiveArgp " test" "test")
-    -}
-
-commentpTests = test [ 
-    "single comment single line" ~: 
-        Just () ~=?  run commentp "#test",
-            
-    "multiple comments multiple lines" ~: 
-        Just [(),()] ~=? run (many1 commentp) "#test\n#test\n" ] 
-
-
--- dArgAllowed tests
-dArgAllowedTests = test [
-    "all allowed symbols" ~: 
-        Just "/~.-_,\"\\^" ~=? run (many dArgAllowed) "/~.-_,\"\\^" ]
- 
- 
- 
 -------------------------------------------------------------------------------
 -- QuickCheck Tests
 -------------------------------------------------------------------------------
-emptyTestOpts = mempty :: TestOptions
-
-testOpts = emptyTestOpts { topt_maximum_generated_tests = Just 10000 }
-
-emptyRunnerOpts = mempty :: RunnerOptions
-runnerOpts = emptyRunnerOpts { ropt_test_options = Just testOpts }
-
-
 newtype AllowedChar     = AllowedChar   { unwrapChar :: Char } deriving Show
 newtype AllowedString   = AllowedString { unwrapString :: String } deriving Show
 
@@ -84,6 +54,9 @@ simpleDirectiveQTest =  [
         testProperty "chars allowed"  propCharsAllowed, 
         testProperty "strings allowed" propStringsAllowed ] ]
 
+parserTests :: [Test]
+parserTests = simpleDirectiveQTest
+
 -------------------------------------------------------------------------------
 -- Helper Functions
 -------------------------------------------------------------------------------
@@ -103,3 +76,4 @@ run p input =
 assertEqual' :: (Eq a, Show a) => String -> Parser a -> String -> a -> Assertion
 assertEqual' msg p i o = 
     assertEqual msg (run p i) (Just o)
+
