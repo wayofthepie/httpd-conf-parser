@@ -23,7 +23,9 @@
     This is a (massive) work in progress.
 -}
 
-module Parser.HttpdConfigParser where
+module Parser.HttpdConfigParser(            
+            Config,
+            configp) where
 
 import Text.Parsec hiding (Line)
 import Text.Parsec.String
@@ -39,8 +41,6 @@ class DirectiveS a where
     hasNestedConfig     :: a -> Bool
     nestedConfig        :: a -> Config
 
-    
-    
 -------------------------------------------------------------------------------
 -- Config
 -------------------------------------------------------------------------------
@@ -49,7 +49,28 @@ newtype Config      = Config ( [DirectiveT] )  deriving (Eq, Show)
 emptyConfig :: Config
 emptyConfig = Config ( [] )
 
+getModules ::  Config -> [[String]]
+getModules ( Config(x:xs) ) = if isModuleLoad x then
+                                getModules' (directiveArgs x :[]) xs
+                              else
+                                getModules' [] xs
 
+getModules' :: DirectiveS a => [[String]] -> [a] -> [[String]]
+getModules' a [] = a
+getModules' a (x : xs) 
+    | isModuleLoad x =  getModules' (directiveArgs x : a) xs
+    | otherwise = getModules' a xs
+                          
+isModuleLoad :: DirectiveS a => a -> Bool
+isModuleLoad x = directiveName x == "LoadModule"                          
+                          
+getConfig :: Either ParseError Config -> Config
+getConfig x = case x of 
+   Left err -> emptyConfig 
+   Right c  -> c
+
+--mapConfig :: (DirectiveS -> b) -> Config -> [b]
+--mapConfig f (Config xs) = map f xs
 
 -------------------------------------------------------------------------------
 -- Line
@@ -57,8 +78,19 @@ emptyConfig = Config ( [] )
 data DirectiveT  = Section SectionDirective 
                     | Simple SimpleDirective deriving (Eq, Show)
 
+instance DirectiveS DirectiveT where
+    directiveName ( Section x )     = directiveName x
+    directiveName ( Simple x)       = directiveName x
 
-                    
+    directiveArgs ( Simple x )      = directiveArgs x
+    directiveArgs ( Section x )     = directiveArgs x
+
+    hasNestedConfig ( Section x )   = hasNestedConfig x
+    hasNestedConfig ( Simple x)     = hasNestedConfig x
+
+    nestedConfig (Section x)        = nestedConfig x
+    nestedConfig (Simple x)         = nestedConfig x
+                   
 -------------------------------------------------------------------------------
 -- SectionDirective
 -------------------------------------------------------------------------------
