@@ -44,13 +44,17 @@ class DirectiveS a where
 -------------------------------------------------------------------------------
 -- Config
 -------------------------------------------------------------------------------
-newtype Config      = Config ( [DirectiveT] )  deriving (Eq, Show)
+newtype Config = Config [DirectiveT] deriving (Eq, Show)
 
-emptyConfig :: Config
-emptyConfig = Config ( [] )
+extractDirectives :: Config -> [DirectiveT]
+extractDirectives ( Config([]) )    = []
+extractDirectives ( Config(x) )     = x
 
-getModules ::  Config -> [[String]]
-getModules ( Config(x:xs) ) = if isModuleLoad x then
+emptyConfig :: Config 
+emptyConfig = Config([])  
+
+getModules :: Config -> [[String]]
+getModules (Config(x:xs))  = if isModuleLoad x then
                                 getModules' (directiveArgs x :[]) xs
                               else
                                 getModules' [] xs
@@ -66,7 +70,7 @@ isModuleLoad x = directiveName x == "LoadModule"
                           
 getConfig :: Either ParseError Config -> Config
 getConfig x = case x of 
-   Left err -> emptyConfig 
+   Left err -> emptyConfig
    Right c  -> c
 
 --mapConfig :: (DirectiveS -> b) -> Config -> [b]
