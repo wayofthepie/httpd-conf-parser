@@ -52,7 +52,6 @@ data SOpen          = SOpen (Directive) deriving (Eq, Show)
 
 data SClose         = SClose String deriving (Eq, Show)
 
-
 -------------------------------------------------------------------------------
 -- Parsers
 -------------------------------------------------------------------------------
@@ -98,7 +97,7 @@ sectionDirectivep = SDirective
     also be seperated from each other by one or more spaces.
 -}
 simpleDirectivep :: Parser Directive
-simpleDirectivep = fmap Directive 
+simpleDirectivep =  Directive <$> 
      directiveNamep 
     <*  ( many $ oneOf " " ) 
     <*> ( endBy directiveArgp $ many $ oneOf " " )
