@@ -58,7 +58,11 @@ library
   
   -- Other library packages from which modules are imported.
   build-depends:       base >=4.7 && <4.8,
-                       parsec 
+                       parsec,
+                       transformers >=0.4.1.0,
+                       directory >= 1.2.1.0,
+                       bytestring >=0.10.4.0,
+                       containers >=0.5.5.1
   
   -- Directories containing source files.
   hs-source-dirs:      src

@@ -1,27 +1,3 @@
-{-
-    A parser for Apache 2.2 configuration files.
-    
-    Following is what the grammar for an apache httpd.conf
-    (and other config files) should be (this is taken from an old book on 
-    configuring apache 2.0):
-    
-    config              ::= directive*
-    directive           ::= section-directive | simple-directive
-    section-directive   ::= section-open configuration section-closed
-    section-open        ::= "<" directive-name directive-argument* ">"
-    section-close       ::= "</" directive-name ">"
-    simple-directive    ::= directive-name directive-argument*
-    
-    directive-name      ::= ...
-        (see http://httpd.apache.org/docs/2.2/mod/directives.html for a list
-            of possible directives and their arguments)
-            
-    directive-arg       ::= ...
-        (see http://httpd.apache.org/docs/2.2/mod/directives.html for a list
-            of possible directives and their arguments)
-            
-    This is a (massive) work in progress.
--}
 
 module Parser.HttpdConfigParser where
 
@@ -36,22 +12,15 @@ import Control.Monad
 newtype Config = Config [AbsDirective] deriving (Eq, Show)
 
 emptyConfig :: Config
-emptyConfig = Config ( [] )
+emptyConfig = Config ([])
 
-extractDirectives :: Config -> [AbsDirective]
-extractDirectives ( Config([]) )    = []
-extractDirectives ( Config(x) )     = x
 
 data AbsDirective   = D Directive | S SDirective deriving (Eq, Show)
 
-data Directive      = Directive String [String] deriving (Eq, Show)
+data Directive      = Directive { name :: String, args :: [String] }  deriving (Eq, Show)
 
-data SDirective     = SDirective SOpen Config SClose deriving (Eq, Show)
+data SDirective     = SDirective Directive Config String deriving (Eq, Show)
                   
-data SOpen          = SOpen (Directive) deriving (Eq, Show)
-
-data SClose         = SClose String deriving (Eq, Show)
-
 
 -------------------------------------------------------------------------------
 -- Parsers
@@ -98,27 +67,25 @@ sectionDirectivep = SDirective
     also be seperated from each other by one or more spaces.
 -}
 simpleDirectivep :: Parser Directive
-simpleDirectivep = fmap Directive 
-     directiveNamep 
+simpleDirectivep = Directive 
+    <$> directiveNamep 
     <*  ( many $ oneOf " " ) 
     <*> ( endBy directiveArgp $ many $ oneOf " " )
-   
 
+   
 {-
     sectionOpenp : parser for opening sections of section directives
 -}    
-sectionOpenp :: Parser SOpen
-sectionOpenp = SOpen 
-    <$> ( char '<' *> simpleDirectivep <* char '>' <*  skipMany newline ) 
+sectionOpenp :: Parser Directive
+sectionOpenp = char '<' *> simpleDirectivep <* char '>' <*  skipMany newline 
     <?> "SectionOpen"    
 
     
 {-
     sectionClosep : parser for closing sections of section directives
 -}
-sectionClosep :: Parser SClose
-sectionClosep = SClose
-    <$> ( char '<' *> char '/' *> directiveNamep <* char '>' )  
+sectionClosep :: Parser String
+sectionClosep = ( char '<' *> char '/' *> directiveNamep <* char '>' )  
     <* skipMany whitespace 
     <?> "SectionClose"
     
@@ -158,4 +125,4 @@ commentp = char '#'
 -}
 whitespace :: Parser ()
 whitespace = space >> spaces
-       
+
