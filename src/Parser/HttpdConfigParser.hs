@@ -36,21 +36,15 @@ import Control.Monad
 newtype Config = Config [AbsDirective] deriving (Eq, Show)
 
 emptyConfig :: Config
-emptyConfig = Config ( [] )
+emptyConfig = Config ([])
 
-extractDirectives :: Config -> [AbsDirective]
-extractDirectives ( Config([]) )    = []
-extractDirectives ( Config(x) )     = x
 
 data AbsDirective   = D Directive | S SDirective deriving (Eq, Show)
 
-data Directive      = Directive String [String] deriving (Eq, Show)
+data Directive      = Directive { name :: String, args :: [String] }  deriving (Eq, Show)
 
-data SDirective     = SDirective SOpen Config SClose deriving (Eq, Show)
+data SDirective     = SDirective Directive Config String deriving (Eq, Show)
                   
-data SOpen          = SOpen (Directive) deriving (Eq, Show)
-
-data SClose         = SClose String deriving (Eq, Show)
 
 -------------------------------------------------------------------------------
 -- Parsers
@@ -97,27 +91,25 @@ sectionDirectivep = SDirective
     also be seperated from each other by one or more spaces.
 -}
 simpleDirectivep :: Parser Directive
-simpleDirectivep =  Directive <$> 
-     directiveNamep 
+simpleDirectivep = Directive 
+    <$> directiveNamep 
     <*  ( many $ oneOf " " ) 
     <*> ( endBy directiveArgp $ many $ oneOf " " )
-   
 
+   
 {-
     sectionOpenp : parser for opening sections of section directives
 -}    
-sectionOpenp :: Parser SOpen
-sectionOpenp = SOpen 
-    <$> ( char '<' *> simpleDirectivep <* char '>' <*  skipMany newline ) 
+sectionOpenp :: Parser Directive
+sectionOpenp = char '<' *> simpleDirectivep <* char '>' <*  skipMany newline 
     <?> "SectionOpen"    
 
     
 {-
     sectionClosep : parser for closing sections of section directives
 -}
-sectionClosep :: Parser SClose
-sectionClosep = SClose
-    <$> ( char '<' *> char '/' *> directiveNamep <* char '>' )  
+sectionClosep :: Parser String
+sectionClosep = ( char '<' *> char '/' *> directiveNamep <* char '>' )  
     <* skipMany whitespace 
     <?> "SectionClose"
     
@@ -157,4 +149,4 @@ commentp = char '#'
 -}
 whitespace :: Parser ()
 whitespace = space >> spaces
-       
+
