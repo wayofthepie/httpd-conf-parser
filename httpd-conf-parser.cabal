@@ -61,7 +61,8 @@ library
                        parsec,
                        transformers >=0.4.1.0,
                        directory >= 1.2.1.0,
-                       bytestring >=0.10.4.0
+                       bytestring >=0.10.4.0,
+                       containers >=0.5.5.1
   
   -- Directories containing source files.
   hs-source-dirs:      src
