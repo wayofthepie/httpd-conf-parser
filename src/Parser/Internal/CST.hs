@@ -1,14 +1,5 @@
 
-module Parser.CST (
-    CST ( CST ),
-    directives,
-
-    Directive ( Directive ),
-    name,
-    args,
-    nested
-    
-    ) where
+module Parser.Internal.CST where
 
 import Text.Parsec
 import Text.Parsec.String
