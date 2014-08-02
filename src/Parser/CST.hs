@@ -1,9 +1,9 @@
 
-module Parser.HttpdConfigParser (
-    CST,
+module Parser.CST (
+    CST ( CST ),
     directives,
 
-    Directive,
+    Directive ( Directive ),
     name,
     args,
     nested
