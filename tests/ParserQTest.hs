@@ -2,7 +2,7 @@ module ParserQTest (parserTests) where
 
 import Data.Char
 
-import Parser.HttpdConfigParser
+import Parser.Internal.CST
 import Control.Applicative hiding ((<|>), many)
 import Text.Parsec
 import Text.Parsec.String
