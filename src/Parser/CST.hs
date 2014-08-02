@@ -1,16 +1,43 @@
 
-module Parser.HttpdConfigParser where
+module Parser.HttpdConfigParser (
+    CST,
+    directives,
+
+    Directive,
+    name,
+    args,
+    nested
+    
+    ) where
 
 import Text.Parsec
 import Text.Parsec.String
 import Control.Applicative hiding ((<|>), many)
+import Control.Lens hiding (noneOf)
+
 -------------------------------------------------------------------------------
 -- Types
 -------------------------------------------------------------------------------
+data CST = CST { _directives :: [Directive] } deriving (Eq, Show)
 
-newtype Config = Config [Directive] deriving (Eq, Show)
+directives :: CST -> [Directive]
+directives = _directives 
 
-data Directive = Directive { name :: String, args :: [String], nds :: [Directive] } | EmptyDirective deriving (Eq, Show)
+data Directive =    Directive { 
+                        _name   :: String, 
+                        _args   :: [String], 
+                        _nds    :: [Directive] 
+                    } 
+                    | EmptyDirective deriving (Eq, Show)
+
+name :: Directive -> String
+name = _name 
+
+args :: Directive -> [String]
+args = _args
+
+nested :: Directive -> [Directive]
+nested = _nds
 
 -------------------------------------------------------------------------------
 -- Parsers
@@ -21,8 +48,8 @@ data Directive = Directive { name :: String, args :: [String], nds :: [Directive
 
     This is the top-level function for the overall config parser.
 -}
-configp :: Parser Config
-configp = Config <$> many1 directivep
+configp :: Parser CST
+configp = CST <$> many1 directivep
 
 
 {-
