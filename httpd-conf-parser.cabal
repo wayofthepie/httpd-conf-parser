@@ -50,7 +50,8 @@ flag template-haskell
     manual: True
 library
   -- Modules exported by the library.
-    exposed-modules:     Parser.Internal.CST
+    exposed-modules:    Parser.Internal.CST,
+                        Parser.Internal.AST
     
   -- Modules included in this library but not exported.
   --  other-modules:  Parser.Internal.CST
