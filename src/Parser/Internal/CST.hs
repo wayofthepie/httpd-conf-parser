@@ -119,7 +119,7 @@ directiveArgp = many1 dArgAllowed <?> "DirectiveArg"
     dArgAllowed : the allowed characters in a directive argument
 -}
 dArgAllowed :: Parser Char
-dArgAllowed = try ( alphaNum ) <|> oneOf "/~.-_,\"\\^:" 
+dArgAllowed = try ( alphaNum ) <|> oneOf "/~@\\.-_,\"\\^:" 
 
 
 {-
