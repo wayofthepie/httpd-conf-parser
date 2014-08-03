@@ -6,8 +6,6 @@ import Data.List (partition)
 import qualified Data.Map as M 
 import Parser.Internal.CST
 
---makeLenses ''Config
---makeLenses ''Directive
 
 type EnvMap = M.Map String [String]
 
