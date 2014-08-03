@@ -18,31 +18,27 @@ buildGlobalEnv ds = foldl mapper M.empty $ filter (\d -> null $ nested d) ds
                                     lookup how we should deal with this second
                                     declaration.  
                                 -}
-                                Just x  -> directiveMapper d m 
+                                Just pargs  -> directiveMapper d m pargs
                                 {- 
                                     If we have not seen this directive 
                                     yet just add it.
                                 -}
-                                Nothing -> M.insert (name d) (args d) m
+                                Nothing     -> M.insert (name d) (args d) m
             
 
-directiveMapper :: Directive -> EnvMap -> EnvMap
-directiveMapper d m =
+directiveMapper :: Directive -> EnvMap -> [String] -> EnvMap
+directiveMapper d m pargs =
     case M.lookup (name d) directiveMap of
-        Just f  -> f d m
+        Just f  -> f d m pargs
         Nothing -> m
         
                     
-directiveMap :: M.Map String (Directive -> EnvMap -> EnvMap)
+directiveMap :: M.Map String (Directive -> EnvMap -> [String] -> EnvMap)
 directiveMap =  M.fromList [            
-            ("ServerRoot",  \d m -> inserter d m (\d _      -> M.insert (name d) (args d) m)),
-            ("ServerAdmin", \d m -> inserter d m (\d _      -> M.insert (name d) (args d) m)), 
-            ("Listen",      \d m -> inserter d m (\d pargs  -> M.insert (name d) (pargs ++ args d) m)),
-            ("LoadModule",  \d m -> inserter d m (\d pargs  -> M.insert (name d) (pargs ++ args d) m))
+            ("ServerRoot",  \d m _      -> M.insert (name d) (args d) m),
+            ("ServerAdmin", \d m _      -> M.insert (name d) (args d) m), 
+            ("Listen",      \d m pargs  -> M.insert (name d) (pargs ++ args d) m),
+            ("LoadModule",  \d m pargs  -> M.insert (name d) (pargs ++ args d) m)
         ]              
-    where   inserter :: Directive -> EnvMap -> (Directive -> [String] -> EnvMap) -> EnvMap
-            inserter d m f =    case M.lookup (name d) m of
-                                    Just pargs  -> f d pargs
-                                    Nothing     -> m 
-           
+          
 
