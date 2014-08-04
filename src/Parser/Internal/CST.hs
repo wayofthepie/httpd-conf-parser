@@ -112,14 +112,45 @@ directiveNamep = (:) <$> letter <*> many alphaNum
     directiveArgp : parser for directive arguments
 -}
 directiveArgp :: Parser String
-directiveArgp = many1 dArgAllowed <?> "DirectiveArg"
+directiveArgp = try ( between (char '"') (char '"') (many quotedDArgAllowed) )
+    <|> many1 dArgAllowed <?> "DirectiveArg"
 
 
 {-
     dArgAllowed : the allowed characters in a directive argument
 -}
 dArgAllowed :: Parser Char
-dArgAllowed = try ( alphaNum ) <|> oneOf "/~@\\.-_,\"\\^:" 
+dArgAllowed = try ( alphaNum ) <|> oneOf dArgAllowedSymbols
+
+
+{-
+    quotedDArgAllowed : parser for quoted Directive arguments
+ -}
+quotedDArgAllowed :: Parser Char
+quotedDArgAllowed = try ( alphaNum )     
+    <|> oneOf (dArgAllowedSymbols ++ ">{} ") 
+    <|> escapedp
+
+
+{- 
+    escapedp : parser for escaped characters
+-}
+escapedp :: Parser Char
+escapedp = char '\\' >> choice (foldl (\l c -> char c : l) [] escapedChars)
+
+
+{-
+    dArgAllowedSymbols : list of allowed unescaped characters
+-}
+dArgAllowedSymbols :: [Char]
+dArgAllowedSymbols =  ['/', '~', '@', '.', '-', '_', ',', '^', ':', '*', '%']
+
+
+{-
+    escapedChars : list of allowed escaped characters
+-}
+escapedChars :: [Char]
+escapedChars = ['\b', '\n', '\f', '\\', '\"', '/']
 
 
 {-
