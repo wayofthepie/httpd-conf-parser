@@ -5,7 +5,7 @@ import Text.Parsec
 import Text.Parsec.String
 import Control.Applicative hiding ((<|>), many)
 import Control.Lens hiding (noneOf)
-
+import Control.Monad
 -------------------------------------------------------------------------------
 -- Types
 -------------------------------------------------------------------------------
@@ -110,10 +110,23 @@ directiveNamep = (:) <$> letter <*> many alphaNum
 
 {-
     directiveArgp : parser for directive arguments
+
+    This parser parsers Directive arguments quoted and unquoted. For the former
+    the parsed string will retain its quotes, escaped.
 -}
 directiveArgp :: Parser String
-directiveArgp = try ( between (char '"') (char '"') (many quotedDArgAllowed) )
+directiveArgp = 
+    try ( lookAhead ( char '"' ) >> 
+        (liftA quoter $  
+            between (char '"') (char '"') (many quotedDArgAllowed) ))
     <|> many1 dArgAllowed <?> "DirectiveArg"
+
+
+{-
+    quoter : takes a string and returns the string quoted 
+-}
+quoter :: String -> String
+quoter s = ['"'] ++ s ++ ['"'] 
 
 
 {-
@@ -128,7 +141,7 @@ dArgAllowed = try ( alphaNum ) <|> oneOf dArgAllowedSymbols
  -}
 quotedDArgAllowed :: Parser Char
 quotedDArgAllowed = try ( alphaNum )     
-    <|> oneOf (dArgAllowedSymbols ++ ">{} ") 
+    <|> oneOf (dArgAllowedSymbols ++ "> ") 
     <|> escapedp
 
 
@@ -143,7 +156,8 @@ escapedp = char '\\' >> choice (foldl (\l c -> char c : l) [] escapedChars)
     dArgAllowedSymbols : list of allowed unescaped characters
 -}
 dArgAllowedSymbols :: [Char]
-dArgAllowedSymbols =  ['/', '~', '@', '.', '-', '_', ',', '^', ':', '*', '%']
+dArgAllowedSymbols = 
+    ['/', '~', '@', '.', '-', '_', ',', '^', ':', '*', '%', '{', '}']
 
 
 {-
