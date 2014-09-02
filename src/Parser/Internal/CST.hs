@@ -12,17 +12,17 @@ import Control.Monad
 data CST = CST { _directives :: [Directive] } deriving (Eq, Show)
 
 directives :: CST -> [Directive]
-directives = _directives 
+directives = _directives
 
-data Directive =    Directive { 
-                        _name   :: String, 
-                        _args   :: [String], 
-                        _nds    :: [Directive] 
-                    } 
+data Directive =    Directive {
+                        _name   :: String,
+                        _args   :: [String],
+                        _nds    :: [Directive]
+                    }
                     | EmptyDirective deriving (Eq, Show)
 
 name :: Directive -> String
-name = _name 
+name = _name
 
 args :: Directive -> [String]
 args = _args
@@ -47,12 +47,10 @@ configp = CST <$> many1 directivep
     directivep : high level parser for directives
 -}
 directivep :: Parser Directive
-directivep = skipMany whitespace
-    *> skipMany commentp
-    *> ( try (  sectionDirectivep )
-        <|> ( simpleDirectivep ) <?> "Directive" )
-    <* skipMany commentp
-    <* skipMany whitespace
+directivep = skipMany ( commentp <|> whitespace)
+    *> ( try ( sectionDirectivep )
+        <|> simpleDirectivep <?> "Directive" )
+    <* skipMany ( commentp <|> whitespace)
 
 
 {-
@@ -61,11 +59,14 @@ directivep = skipMany whitespace
 sectionDirectivep :: Parser Directive
 sectionDirectivep = sectionDirective
     <$> sectionOpenp
-    <*> ( try ( lookAhead ( sectionClosep >> return [] ) )
-                    <|> many1 directivep <?> "SectionClose or Config" )
-    <*> sectionClosep
-    where   sectionDirective :: Directive -> [Directive] -> String -> Directive
-            sectionDirective (Directive n as _) nds _ = Directive n as nds
+    <*  skipMany whitespace
+    <*  skipMany commentp
+    <*> ( try ( sectionClosep >> return [] )
+        <|> many1 directivep
+                    <?> "SectionClose or Config" )
+    where   sectionDirective :: Directive -> [Directive] ->  Directive
+            sectionDirective (Directive n as _) nds = Directive n as nds
+
 
 
 {-
@@ -80,7 +81,7 @@ simpleDirectivep :: Parser Directive
 simpleDirectivep = simpleDirective
     <$> directiveNamep
     <*  ( many $ oneOf " " )
-    <*> ( endBy directiveArgp $ many $ oneOf " " )
+    <*> ( endBy ( ( ( lookAhead ( char '\"' ) >> qdirectiveArgp ) <|>  directiveArgp) ) $ oneOf " ")
     where   simpleDirective :: String -> [String] -> Directive
             simpleDirective n xs = Directive n xs []
 
@@ -97,7 +98,6 @@ sectionOpenp = char '<' *> simpleDirectivep <* char '>' <*  skipMany newline
 -}
 sectionClosep :: Parser String
 sectionClosep = ( char '<' *> char '/' *> directiveNamep <* char '>' )
-    <* skipMany whitespace
     <?> "SectionClose"
 
 
@@ -108,6 +108,35 @@ directiveNamep :: Parser String
 directiveNamep = (:) <$> letter <*> many alphaNum
 
 
+-- | qdirectiveArgp : parser for quoted directive arguments
+qdirectiveArgp :: Parser String
+qdirectiveArgp = between ( char '\"' ) ( char '\"' ) allowedChars
+    <?> "Expected a quoted directive argument."
+    where allowedChars = many ( dArgAllowed <|> escapedp <|> oneOf " " )
+
+
+-- |  escapedp : parser for escaped characters
+escapedp :: Parser Char
+escapedp = char '\\' >> choice charMap
+    where charMap = foldl (\l (c,r) -> (char c *> return r) : l)
+                        [] escapedCharMappings
+
+
+-- | transformChar : discards 'c' and returns a parser for its replacement
+-- character 'replacement'
+transformChar :: Char -> Char -> Parser Char
+transformChar c replacement = char c *> return replacement
+
+
+-- | escapedCharMappings : escaped characters and their replacements
+--
+-- The first char in a tuple is the escaped character, teh second is what it
+-- must be replaced with when returning its value. Note that when parsing
+-- escaped characters are those preceeded with '\' e.g. "\n".
+escapedCharMappings :: [ ( Char, Char ) ]
+escapedCharMappings = [('\\', '\\'), ('\"', '\"'), ('n', '\n'), ('t', '\t')]
+
+
 {-
     directiveArgp : parser for directive arguments
 
@@ -115,56 +144,22 @@ directiveNamep = (:) <$> letter <*> many alphaNum
     the parsed string will retain its quotes, escaped.
 -}
 directiveArgp :: Parser String
-directiveArgp = 
-    try ( lookAhead ( char '"' ) >> 
-        (liftA quoter $  
-            between (char '"') (char '"') (many quotedDArgAllowed) ))
-    <|> many1 dArgAllowed <?> "DirectiveArg"
-
-
-{-
-    quoter : takes a string and returns the string quoted 
--}
-quoter :: String -> String
-quoter s = ['"'] ++ s ++ ['"'] 
-
+directiveArgp = many dArgAllowed  <?> "DirectiveArg"
+--    ( lookAhead ( char '\"' ) >>
+--        ( many ( escapedp <|> oneOf " " <|> dArgAllowed ) ) )
 
 {-
     dArgAllowed : the allowed characters in a directive argument
 -}
 dArgAllowed :: Parser Char
-dArgAllowed = try ( alphaNum ) <|> oneOf dArgAllowedSymbols
-
-
-{-
-    quotedDArgAllowed : parser for quoted Directive arguments
- -}
-quotedDArgAllowed :: Parser Char
-quotedDArgAllowed = try ( alphaNum )     
-    <|> oneOf (dArgAllowedSymbols ++ "> ") 
-    <|> escapedp
-
-
-{- 
-    escapedp : parser for escaped characters
--}
-escapedp :: Parser Char
-escapedp = char '\\' >> choice (foldl (\l c -> char c : l) [] escapedChars)
+dArgAllowed = alphaNum <|> oneOf dArgAllowedSymbols
 
 
 {-
     dArgAllowedSymbols : list of allowed unescaped characters
 -}
 dArgAllowedSymbols :: [Char]
-dArgAllowedSymbols = 
-    ['/', '~', '@', '.', '-', '_', ',', '^', ':', '*', '%', '{', '}']
-
-
-{-
-    escapedChars : list of allowed escaped characters
--}
-escapedChars :: [Char]
-escapedChars = ['\b', '\n', '\f', '\\', '\"', '/']
+dArgAllowedSymbols = ['/', '~', '@', '.', '-', '_', ',', '^', ':', '*', '%', '{', '}']
 
 
 {-
@@ -173,7 +168,6 @@ escapedChars = ['\b', '\n', '\f', '\\', '\"', '/']
 commentp :: Parser ()
 commentp = char '#'
     *> try ( skipMany ( noneOf "\n\r" ) )
-    *> skipMany whitespace
 
 
 {-
