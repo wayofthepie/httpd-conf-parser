@@ -80,8 +80,8 @@ sectionDirectivep = sectionDirective
 simpleDirectivep :: Parser Directive
 simpleDirectivep = simpleDirective
     <$> directiveNamep
-    <*  ( many $ oneOf " " )
-    <*> ( endBy ( ( ( lookAhead ( char '\"' ) >> qdirectiveArgp ) <|>  directiveArgp) ) $ oneOf " ")
+    <*  ( many $ char ' ' )
+    <*> ( sepBy ( qdirectiveArgp <|> directiveArgp  ) $ oneOf " " )
     where   simpleDirective :: String -> [String] -> Directive
             simpleDirective n xs = Directive n xs []
 
@@ -145,8 +145,7 @@ escapedCharMappings = [('\\', '\\'), ('\"', '\"'), ('n', '\n'), ('t', '\t')]
 -}
 directiveArgp :: Parser String
 directiveArgp = many dArgAllowed  <?> "DirectiveArg"
---    ( lookAhead ( char '\"' ) >>
---        ( many ( escapedp <|> oneOf " " <|> dArgAllowed ) ) )
+
 
 {-
     dArgAllowed : the allowed characters in a directive argument
@@ -159,7 +158,8 @@ dArgAllowed = alphaNum <|> oneOf dArgAllowedSymbols
     dArgAllowedSymbols : list of allowed unescaped characters
 -}
 dArgAllowedSymbols :: [Char]
-dArgAllowedSymbols = ['/', '~', '@', '.', '-', '_', ',', '^', ':', '*', '%', '{', '}']
+dArgAllowedSymbols = [ '/', '~', '@', '.', '-', '_', 
+    ',', '^', ':', '*', '%', '{', '}' ]
 
 
 {-
