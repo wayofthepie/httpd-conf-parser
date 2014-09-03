@@ -98,7 +98,7 @@ directiveNamep = (:) <$> letter <*> many alphaNum
 
 -- | qdirectiveArgp : parser for quoted directive arguments
 qdirectiveArgp :: Parser String
-qdirectiveArgp = between ( char '\"' ) ( char '\"' ) allowedChars
+qdirectiveArgp = between ( char '"' ) ( char '"' ) allowedChars
     <?> "a quoted directive argument"
     where allowedChars = many ( qdArgAllowed <|> escapedp <|> oneOf " " )
 
@@ -122,7 +122,7 @@ transformChar c r = char c *> return r
 -- must be replaced with when returning its value. Note that when parsing
 -- escaped characters are those preceeded with '\' e.g. "\n".
 escapedCharMappings :: [ ( Char, Char ) ]
-escapedCharMappings = [('\\', '\\'), ('\"', '\"'), ('n', '\n'), ('t', '\t')]
+escapedCharMappings = [('\\', '\\'), ('"', '"'), ('n', '\n'), ('t', '\t')]
 
 
 -- | directiveArgp : parser for directive arguments
