@@ -98,7 +98,7 @@ directiveNamep = (:) <$> letter <*> many alphaNum
 
 -- | qdirectiveArgp : parser for quoted directive arguments
 qdirectiveArgp :: Parser String
-qdirectiveArgp = between ( char '\"' ) ( char '\"' ) allowedChars
+qdirectiveArgp = between ( char '"' ) ( char '"' ) allowedChars
     <?> "a quoted directive argument"
     where allowedChars = many ( qdArgAllowed <|> escapedp <|> oneOf " " )
 
