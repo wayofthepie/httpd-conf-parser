@@ -47,11 +47,9 @@ configp = CST <$> manyTill directivep eof
     directivep : high level parser for directives
 -}
 directivep :: Parser Directive
-directivep = skipMany ( commentp )
-    *> skipMany whitespace
+directivep = skipMany ( commentp <|> whitespace)
     *> ( try ( sectionDirectivep ) <|> simpleDirectivep )
-    <*  newline <* skipMany ( commentp ) 
-    <* skipMany whitespace
+    <*  newline <* skipMany ( commentp <|> whitespace ) 
     <?> "Expecting a directive"
 
 
@@ -61,8 +59,9 @@ directivep = skipMany ( commentp )
 sectionDirectivep :: Parser Directive
 sectionDirectivep = sectionDirective
     <$> sectionOpenp
-    <*  skipMany ( commentp )
-    <*> ( try ( sectionClosep >> return [] ) <|> many1 directivep )
+    <*  skipMany ( commentp <|> whitespace )
+    <*> ( try ( lookAhead ( sectionClosep >> return [] ) ) <|> many1 directivep )
+    <*  sectionClosep
     <?> "Expecting a section directive"
     where   sectionDirective :: Directive -> [Directive] ->  Directive
             sectionDirective (Directive n as _) nds = Directive n as nds
@@ -115,7 +114,7 @@ directiveNamep = (:) <$> letter <*> many alphaNum
 qdirectiveArgp :: Parser String
 qdirectiveArgp = between ( char '\"' ) ( char '\"' ) allowedChars
     <?> "Expected a quoted directive argument"
-    where allowedChars = many ( dArgAllowed <|> escapedp <|> oneOf " " )
+    where allowedChars = many ( qdArgAllowed <|> escapedp <|> oneOf " " )
 
 
 -- |  escapedp : parser for escaped characters
@@ -158,12 +157,20 @@ dArgAllowed :: Parser Char
 dArgAllowed = alphaNum <|> oneOf dArgAllowedSymbols
 
 
+qdArgAllowed :: Parser Char
+qdArgAllowed = dArgAllowed <|> oneOf qdArgAllowedSymbols 
+
 {-
     dArgAllowedSymbols : list of allowed unescaped characters
 -}
 dArgAllowedSymbols :: [Char]
 dArgAllowedSymbols = [ '/', '~', '@', '.', '-', '_', 
     ',', '^', ':', '*', '%', '{', '}' ]
+
+
+-- | qdArgAllowedSymbols : symbols only allowed in quoted directive arguments
+qdArgAllowedSymbols :: [Char]
+qdArgAllowedSymbols = ['<', '>']
 
 
 {-
