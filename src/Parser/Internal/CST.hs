@@ -18,8 +18,7 @@ data Directive =    Directive {
                         _name   :: String,
                         _args   :: [String],
                         _nds    :: [Directive]
-                    }
-                    | EmptyDirective deriving (Eq, Show)
+                    } | EmptyDirective deriving (Eq, Show)
 
 name :: Directive -> String
 name = _name
