@@ -40,17 +40,19 @@ nested = _nds
     This is the top-level function for the overall config parser.
 -}
 configp :: Parser CST
-configp = CST <$> many1 directivep
+configp = CST <$> manyTill directivep eof
 
 
 {-
     directivep : high level parser for directives
 -}
 directivep :: Parser Directive
-directivep = skipMany ( commentp <|> whitespace)
-    *> ( try ( sectionDirectivep )
-        <|> simpleDirectivep <?> "Directive" )
-    <* skipMany ( commentp <|> whitespace)
+directivep = skipMany ( commentp )
+    *> skipMany whitespace
+    *> ( try ( sectionDirectivep ) <|> simpleDirectivep )
+    <*  newline <* skipMany ( commentp ) 
+    <* skipMany whitespace
+    <?> "Expecting a directive"
 
 
 {-
@@ -59,11 +61,9 @@ directivep = skipMany ( commentp <|> whitespace)
 sectionDirectivep :: Parser Directive
 sectionDirectivep = sectionDirective
     <$> sectionOpenp
-    <*  skipMany whitespace
-    <*  skipMany commentp
-    <*> ( try ( sectionClosep >> return [] )
-        <|> many1 directivep
-                    <?> "SectionClose or Config" )
+    <*  skipMany ( commentp )
+    <*> ( try ( sectionClosep >> return [] ) <|> many1 directivep )
+    <?> "Expecting a section directive"
     where   sectionDirective :: Directive -> [Directive] ->  Directive
             sectionDirective (Directive n as _) nds = Directive n as nds
 
@@ -81,16 +81,18 @@ simpleDirectivep :: Parser Directive
 simpleDirectivep = simpleDirective
     <$> directiveNamep
     <*  ( many $ char ' ' )
-    <*> ( sepBy ( qdirectiveArgp <|> directiveArgp  ) $ oneOf " " )
+    <*> ( sepBy ( try ( qdirectiveArgp ) <|> directiveArgp  ) $ oneOf " " )
+    <?> "Expecting a simple directive"
     where   simpleDirective :: String -> [String] -> Directive
             simpleDirective n xs = Directive n xs []
+
 
 {-
     sectionOpenp : parser for opening sections of section directives
 -}
 sectionOpenp :: Parser Directive
-sectionOpenp = char '<' *> simpleDirectivep <* char '>' <*  skipMany newline
-    <?> "SectionOpen"
+sectionOpenp = char '<' *> simpleDirectivep <* char '>' 
+    <?> "Expecting the opening section of a section directive"
 
 
 {-
@@ -98,26 +100,28 @@ sectionOpenp = char '<' *> simpleDirectivep <* char '>' <*  skipMany newline
 -}
 sectionClosep :: Parser String
 sectionClosep = ( char '<' *> char '/' *> directiveNamep <* char '>' )
-    <?> "SectionClose"
+    <?> "Expecting the closing section of a section directive"
 
 
 {-
     directiveNamep : parser for directive names
 -}
 directiveNamep :: Parser String
-directiveNamep = (:) <$> letter <*> many alphaNum
+directiveNamep = (:) <$> letter <*> many alphaNum 
+    <?> "Expecting a directive name"
 
 
 -- | qdirectiveArgp : parser for quoted directive arguments
 qdirectiveArgp :: Parser String
 qdirectiveArgp = between ( char '\"' ) ( char '\"' ) allowedChars
-    <?> "Expected a quoted directive argument."
+    <?> "Expected a quoted directive argument"
     where allowedChars = many ( dArgAllowed <|> escapedp <|> oneOf " " )
 
 
 -- |  escapedp : parser for escaped characters
 escapedp :: Parser Char
-escapedp = char '\\' >> choice charMap
+escapedp = char '\\' >> choice charMap 
+    <?> "Expecting an escaped character"
     where charMap = foldl (\l (c,r) -> (char c *> return r) : l)
                         [] escapedCharMappings
 
@@ -144,7 +148,7 @@ escapedCharMappings = [('\\', '\\'), ('\"', '\"'), ('n', '\n'), ('t', '\t')]
     the parsed string will retain its quotes, escaped.
 -}
 directiveArgp :: Parser String
-directiveArgp = many dArgAllowed  <?> "DirectiveArg"
+directiveArgp = many dArgAllowed  <?> "Expecting a directive argument"
 
 
 {-
@@ -166,8 +170,7 @@ dArgAllowedSymbols = [ '/', '~', '@', '.', '-', '_',
     commentp : parser for comments
 -}
 commentp :: Parser ()
-commentp = char '#'
-    *> try ( skipMany ( noneOf "\n\r" ) )
+commentp =  char '#' *> manyTill anyChar newline  *> return ()
 
 
 {-
