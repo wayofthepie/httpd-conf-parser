@@ -125,9 +125,6 @@ escapedCharMappings = [('\\', '\\'), ('"', '"'), ('n', '\n'), ('t', '\t')]
 
 
 -- | directiveArgp : parser for directive arguments
--- 
--- This parser parsers Directive arguments quoted and unquoted. For the former
--- the parsed string will retain its quotes, escaped.
 directiveArgp :: Parser String
 directiveArgp = many dArgAllowed  <?> "a directive argument"
 
